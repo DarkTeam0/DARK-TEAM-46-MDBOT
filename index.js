@@ -1,12 +1,9 @@
-// ==== IMPORTS ====
-const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
+const readline = require('readline');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 
-// ==== DATA FILE FOR PAIRING CODES ====
 const PAIRING_DB = './pairing.json';
 
-// ==== LOAD OR CREATE PAIRING DATABASE ====
 function loadDB() {
     if (fs.existsSync(PAIRING_DB)) {
         return JSON.parse(fs.readFileSync(PAIRING_DB));
@@ -19,7 +16,6 @@ function saveDB(data) {
     fs.writeFileSync(PAIRING_DB, JSON.stringify(data, null, 2));
 }
 
-// ==== GENERATE RANDOM 6 or 8 DIGIT CODE ====
 function generateCode(length = 6) {
     let code = '';
     for (let i = 0; i < length; i++) {
@@ -28,19 +24,34 @@ function generateCode(length = 6) {
     return code;
 }
 
-// ==== MAIN BOT FUNCTION ====
+async function askQuestion(query) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+    return new Promise(resolve => rl.question(query, ans => {
+        rl.close();
+        resolve(ans);
+    }))
+}
+
 async function startBot() {
+    console.log('✅ Starting DARK-TEAM-46 MD BOT');
+
     const { state, saveCreds } = await useMultiFileAuthState('session');
     const sock = makeWASocket({
         printQRInTerminal: true,
-        auth: state
+        auth: state,
+        browser: ["DARK-TEAM-46", "Chrome", "1.0"]
     });
 
     sock.ev.on('creds.update', saveCreds);
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error = Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('connection closed due to', lastDisconnect.error, ', reconnecting', shouldReconnect);
-            if (shouldReconnect) startBot();
-        } else if (connection
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, qr } = update;
+        if (qr) {
+            console.log('📌 SCAN THIS QR CODE IN WHATSAPP!');
+        }
+        if (connection === 'open') {
+            console.log('✅ BOT CONNECTED');
+
+            /
